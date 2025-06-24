@@ -78,7 +78,9 @@ class NeuralTomography:
         Loads training data from .npz and .npy files.
 
         Args:
-            train_path (str): Path to the training data directory.
+            train_path (str): Path to the training data directory. Should contain the following files:
+                "probs.npz"
+                "alpha.npy"
             n_train (int): The number of training samples to load.
             n_val_split (float): The fraction of training data to use for validation. Defaults to .1.
             rng_seed (int): Seed for training/validation data shuffling. Defaults to None (random seed).
@@ -119,18 +121,35 @@ class NeuralTomography:
         Loads test data from .npz and .npy files.
         
         Args:
-            train_path (str): Path to the test data directory.
+            train_path (str): Path to the test data directory. Should contain "probs.npz" for data with no ground truth,
+                and optionally "rho.npy" if ground truth is known.
+                
+                "probs.npz" should be structured as a dictionary, where the keys are strings denoting Pauli measurements:
+                    e.g. 'ZXY', denoting a Pauli Z measurement on qubit 0, X on qubit 1, Y on qubit 2
+                and the values are arrays of shape (M,2**n_qubits) where M is the total number of samples (density matrices) and should be consistent 
+                across keys. Rows correspond to samples, and columns correspond to outcomes, in lexographical binary order (00...00,00...01,00...10,...,11...11).
+                So the (a,b) entry of probs['XYZ'] should give the probabilty of observing outcome b for the ath density matrix, measured using operators X, Y, and Z.
+                See example.py for an example.
+                    
             n_train (int): The number of test samples to load.
         """
         
         print("Loading and preprocessing data...")
 
         if os.path.exists(os.path.join(test_path, 'rho.npy')):
-            self.rho_test = np.load(os.path.join(test_path, 'rho.npy'))          
+            self.rho_test = np.load(os.path.join(test_path, 'rho.npy'))
+        else:
+            self.rho_test = None
         
         with np.load(os.path.join(test_path, 'probs.npz')) as data:
-            prob_arrays = [data[b][:n_test] for b in self.bases]
+            if data[self.bases[0]].ndim > 1:
+                prob_arrays = [data[b][:n_test] for b in self.bases]
+            else:
+                prob_arrays = [data[b] for b in self.bases]
+        if prob_arrays[0].ndim > 1:
             self.x_test = np.concatenate(prob_arrays, axis=1)
+        else:
+            self.x_test = np.expand_dims(np.concatenate(prob_arrays),axis=0)
         
         print(f"Data loaded. Test samples: {len(self.x_test)}")
 
@@ -238,6 +257,7 @@ class NeuralTomography:
 
 #%%
 if __name__ == '__main__':
+# ----------- Example ----------------
     # Configuration
     N_QUBITS = 2
     BASES = ['ZZ', 'ZX', 'ZY', 'XZ', 'XX', 'XY', 'YZ', 'YX', 'YY']

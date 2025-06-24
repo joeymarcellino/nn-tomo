@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 import numpy as np
 import qutip as qtp
 import os
@@ -208,7 +206,7 @@ class TrainingDataGenerator:
             for basis in self.bases:
                 probs = self._sample_dm_one_basis(rho, basis, self.n_qubits, self.povm_noise)
                 if self.n_counts > 0:
-                    probs = self._discretize_probs(probs, self.n_counts, self.n_qubits)
+                    probs = self._discretize_probs(probs, self.n_counts)
                 self.all_probs[basis].append(probs)
 
         self._save_data()
@@ -216,6 +214,7 @@ class TrainingDataGenerator:
 
 #%%
 if __name__ == "__main__":
+# ------------------ Example ----------------
     print("\n--- Running generator with custom settings ---")
     CONFIG = {
         "n_qubits": 2,
